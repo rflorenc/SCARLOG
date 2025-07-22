@@ -1,0 +1,15 @@
+bench_logs
+output_results
+tools
+dnc
+benchmarks/output_results
+REPORT_TEMPLATE
+venv*
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+hf_token.txt
+generate_report_pdf.py
+analyze_benchmark.py
+datasets/
