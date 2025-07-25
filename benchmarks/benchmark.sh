@@ -27,6 +27,10 @@ TRACES_UL="../datasets/intermediate_tasks/task1_systems/loghub/HDFS/HDFS_2k.log_
 UNSW_UL="../datasets/intermediate_tasks/intrusion_detection/UNSW_NB15/UNSW-NB15_1.csv"
 BGL_UL="../datasets/intermediate_tasks/task1_systems/loghub/BGL/BGL_processed/BGL_unlabeled_2k.csv"
 
+# AssureMOSS datasets
+#AMK_BENIGN="../datasets/intermediate_tasks/task1_systems/AssureMOSS Kubernetes Run-time Monitoring Dataset_1_all/elastic_may2021_benign_data.csv"
+AMK_LBL="../datasets/intermediate_tasks/task1_systems/AssureMOSS Kubernetes Run-time Monitoring Dataset_1_all/elastic_may2021_malicious_data.csv"
+
 
 run_and_log() {
   local tag="$1"; shift
@@ -42,7 +46,6 @@ run_and_log() {
 echo "Running SCARLOG all_models with backend architecture"
 echo "Using local transformers inference with PyTorch"
 echo ""
-
 
 MAIN_SIZE=5000
 
@@ -67,6 +70,13 @@ BGL_SIZES=(${MAIN_SIZE})              # edit e.g. (1000 5000 10000)
 for N in "${BGL_SIZES[@]}"; do
   run_and_log "bgl_lbl_${N}" \
     python ../run_benchmark.py "$BGL_LBL" ${N} bgl
+done
+
+# AssureMOSS (AMK)
+AMK_SIZES=(${MAIN_SIZE})              # edit e.g. (1000 5000 10000)
+for N in "${AMK_SIZES[@]}"; do
+  run_and_log "AMK_lbl_${N}" \
+    python ../run_benchmark.py "$AMK_LBL" ${N} assuremoss
 done
 
 ### Unlabeled benchmarks

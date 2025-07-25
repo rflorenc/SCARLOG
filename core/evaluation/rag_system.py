@@ -12,7 +12,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 import torch
 from utils.json_utils import ensure_json_serializable
-from .data_loading import load_log_templates, enrich_text_for_rag, load_unsw_features, enrich_unsw_for_rag, resolve_dataset_path
+from .data_loading import load_log_templates, enrich_log_entry_context, load_unsw_features, enrich_unsw_for_rag, resolve_dataset_path
 
 try:
     from langchain.docstore.document import Document
@@ -359,7 +359,7 @@ def rag_explanation_monitored(vector_db, query_text: str, model, tokenizer,
     if dataset_type == "unsw-nb15" and unsw_features:
         enriched_query = enrich_unsw_for_rag(query_text, unsw_features)
     elif template_mapping:
-        enriched_query = enrich_text_for_rag(query_text, template_mapping)
+        enriched_query = enrich_log_entry_context(query_text, template_mapping)
     else:
         enriched_query = query_text
     
@@ -373,7 +373,7 @@ def rag_explanation_monitored(vector_db, query_text: str, model, tokenizer,
         if dataset_type == "unsw-nb15" and unsw_features:
             enriched_log = enrich_unsw_for_rag(doc.page_content, unsw_features)
         elif template_mapping:
-            enriched_log = enrich_text_for_rag(doc.page_content, template_mapping)
+            enriched_log = enrich_log_entry_context(doc.page_content, template_mapping)
         else:
             enriched_log = doc.page_content
             

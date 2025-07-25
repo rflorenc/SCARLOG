@@ -110,8 +110,12 @@ def enrich_with_templates(event_ids: List[str], template_mapping: Dict[str, str]
             enriched.append(event_id)
     return enriched
 
-def enrich_text_for_rag(text: str, template_mapping: Dict[str, str]) -> str:
-    """Enrich text with semantic templates for RAG/reasoning contexts only"""
+def enrich_log_entry_context(text: str, template_mapping: Optional[Dict[str, str]] = None, dataset_type: Optional[str] = None) -> str:
+    """Enrich log entry with contextual information (templates, dataset-specific features)"""
+    if dataset_type == "assuremoss":
+        # For AssureMOSS, add Kubernetes context
+        return f"Kubernetes NetFlow: {text}"
+    
     if not template_mapping:
         return text
     
@@ -183,6 +187,8 @@ def load_dataset(csv_path: str, dataset_type: str = "eventtraces", nlines: Optio
         return load_bgl_data(resolved_path, nlines, preprocessing)
     elif dataset_type == "unsw-nb15":
         return load_unsw_nb15(resolved_path, nlines, preprocessing)
+    elif dataset_type == "assuremoss":
+        return load_assuremoss(resolved_path, nlines, preprocessing)
     else:
         raise ValueError(f"Unknown dataset type: {dataset_type}")
 
@@ -442,6 +448,85 @@ def load_unsw_nb15(csv_path: str, nlines: Optional[int] = None, preprocessing: O
     lines = []
     for _, row in feature_df.iterrows():
         line = ' '.join([str(val) for val in row.values])
+        lines.append(line)
+    
+    return lines, labels
+
+def load_assuremoss(csv_path: str, nlines: Optional[int] = None, preprocessing: Optional[Dict] = None) -> Tuple[List[str], np.ndarray]:
+    """
+    Load AssureMOSS Kubernetes NetFlow dataset as text for LLM processing
+    
+    Args:
+        csv_path: Path to AssureMOSS CSV file
+        nlines: Number of lines to load
+        preprocessing: Dict of preprocessing options
+        
+    Returns:
+        Tuple of (lines, labels) where lines are formatted NetFlow records
+    """
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"Dataset file not found: {csv_path}")
+    
+    df = pd.read_csv(csv_path)
+    if nlines and nlines < len(df):
+        logger.info(f"Sampling {nlines} lines from {len(df)} total lines")
+        df = df.sample(n=nlines, random_state=42)
+    elif nlines:
+        logger.info(f"Requested {nlines} lines, but dataset only has {len(df)} lines")
+    
+    logger.info(f"Loaded AssureMOSS dataset: {len(df)} samples")
+
+    preprocessing = preprocessing or {}
+
+    # Handle label column - convert string labels to binary
+    if 'label' in df.columns:
+        # Convert 'benign'->0, 'malicious'->1
+        labels = (df['label'] == 'malicious').astype(int).values
+    else:
+        raise ValueError("No label column found in AssureMOSS dataset")
+
+    # Convert NetFlow records to text format
+    lines = []
+    for _, row in df.iterrows():
+        # Format: source_ip:port -> dest_ip:port protocol=PROTO packets=N bytes=N duration=N
+        flow_parts = []
+        
+        # Network flow information
+        if '_source_source_ip' in row and pd.notna(row['_source_source_ip']) and \
+           '_source_destination_ip' in row and pd.notna(row['_source_destination_ip']):
+            src_ip = row['_source_source_ip']
+            dst_ip = row['_source_destination_ip']
+            
+            # Add ports if available
+            if '_source_source_port' in row and pd.notna(row['_source_source_port']) and \
+               '_source_destination_port' in row and pd.notna(row['_source_destination_port']):
+                src_port = int(row['_source_source_port'])
+                dst_port = int(row['_source_destination_port'])
+                flow_parts.append(f"{src_ip}:{src_port} -> {dst_ip}:{dst_port}")
+            else:
+                flow_parts.append(f"{src_ip} -> {dst_ip}")
+        
+        # Protocol (transport)
+        if '_source_network_transport' in row and pd.notna(row['_source_network_transport']):
+            protocol = str(row['_source_network_transport']).upper()
+            flow_parts.append(f"protocol={protocol}")
+        
+        # Traffic metrics
+        if '_source_network_bytes' in row and pd.notna(row['_source_network_bytes']):
+            flow_parts.append(f"bytes={int(row['_source_network_bytes'])}")
+        
+        if '_source_event_duration' in row and pd.notna(row['_source_event_duration']):
+            # Duration is in microseconds, convert to seconds
+            duration_seconds = row['_source_event_duration'] / 1_000_000
+            flow_parts.append(f"duration={duration_seconds:.2f}s")
+        
+        # Join all parts into a single line
+        line = ' '.join(flow_parts)
+        
+        # If no data was extracted, create a minimal entry
+        if not line.strip():
+            line = "unknown_flow"
+            
         lines.append(line)
     
     return lines, labels

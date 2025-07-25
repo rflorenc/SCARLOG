@@ -11,10 +11,9 @@ SCARLOG (Self-Consistent Anomaly Reasoning for Logs) is a research project for e
 
 
 <p align="left">
-  <img src="figures/reasoning_architecture.png" alt="Architecture diagram showing reasoning components" width="800">
+  <img src="figures/scarlog_architecture.png" alt="Architecture diagram showing reasoning components" width="800">
 </p>
 
 ## Getting Started
 
-See `examples/` directory for usage examples and migration patterns.
-Benchmark scripts (test, small, large) are also provided.   
+Benchmark scripts (test, small, large) are provided in the `benchmarks/` directory.   

@@ -76,14 +76,19 @@ def load_model_configs() -> Dict[str, ModelConfig]:
     return configs
 
 def load_approaches(test_config: str = None) -> tuple[List[Dict[str, str]], Dict[str, Any]]:
-    """Load approaches and reasoning config from YAML configuration"""
+    """Load approaches and full configuration from YAML configuration"""
     import yaml
     
     config_path = Path(__file__).parent / "config" / "approaches.yaml"
     with open(config_path) as f:
         config_data = yaml.safe_load(f)
     
-    reasoning_config = config_data.get('reasoning_enhancements', {})
+    # Return full config, not just reasoning_config
+    full_config = {
+        'reasoning_enhancements': config_data.get('reasoning_enhancements', {}),
+        'rag_evaluation': config_data.get('rag_evaluation', {}),
+        'cross_validation_inference': config_data.get('reasoning_enhancements', {}).get('cross_validation_inference', {})
+    }
     
     if test_config and test_config in config_data.get('test_configs', {}):
         enabled_names = config_data['test_configs'][test_config]
@@ -93,7 +98,7 @@ def load_approaches(test_config: str = None) -> tuple[List[Dict[str, str]], Dict
             if approach['name'] in enabled_names
         ]
         logger.info(f"Using test config '{test_config}' with {len(approaches)} approaches")
-        return approaches, reasoning_config
+        return approaches, full_config
     
     approaches = [
         {"name": approach['name'], "type": approach['type'], "model_name": approach['model_name']}
@@ -102,10 +107,10 @@ def load_approaches(test_config: str = None) -> tuple[List[Dict[str, str]], Dict
     ]
     
     logger.info(f"Loaded {len(approaches)} enabled approaches from configuration")
-    return approaches, reasoning_config
+    return approaches, full_config
 
 APPROACHES = []
-REASONING_CONFIG = {}
+FULL_CONFIG = {}
 
 async def run_single_approach(approach_idx: int, data_args: List[str], nlines: int, dataset_type: str, 
                             contamination: str = "auto", mode: str = "labeled", global_backend: str = None) -> bool:
@@ -166,7 +171,7 @@ async def run_single_approach(approach_idx: int, data_args: List[str], nlines: i
                 )
         
         manager = InferenceManager()
-        evaluation_engine = EvaluationEngine(REASONING_CONFIG)
+        evaluation_engine = EvaluationEngine(FULL_CONFIG)
         
         async with manager.backend_context(backend_name, inference_config) as backend:
             if mode == "unlabeled":
@@ -298,8 +303,8 @@ async def main():
         write_run_info(RESULTS_DIR, data_args[0], nlines, dataset_type)
 
     global APPROACHES
-    global REASONING_CONFIG
-    APPROACHES, REASONING_CONFIG = load_approaches(test_config)
+    global FULL_CONFIG
+    APPROACHES, FULL_CONFIG = load_approaches(test_config)
     
     logger.info(f"APPROACHES: {len(APPROACHES)} models")
     logger.info(f"Results directory: {RESULTS_DIR}")

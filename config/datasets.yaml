@@ -33,6 +33,14 @@ datasets:
       enable_semantic_enrichment: true
       template_path: "datasets/intermediate_tasks/task1_systems/loghub/BGL/BGL_processed/BGL_templates.csv"
       
+  - name: "assuremoss-labeled"
+    dataset_type: "assuremoss"
+    data_path: "datasets/intermediate_tasks/task1_systems/AssureMOSS Kubernetes Run-time Monitoring Dataset_1_all/elastic_may2021_malicious_data.csv"
+    nlines: 1000
+    preprocessing:
+      remove_duplicates: false
+      handle_missing: true
+      
   # Unlabeled datasets unsupervised
   - name: "unsw-nb15-unlabeled"
     dataset_type: "unsw-nb15"

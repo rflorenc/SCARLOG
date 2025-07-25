@@ -191,7 +191,11 @@ class LocalTransformersBackend(InferenceBackend):
                                     truncation=True,
                                     max_length=max_length,
                                     padding=False  # No padding for single text
-                                ).to(self.device)
+                                )
+                                # Ensure input_ids are long tensors (required for embedding layer)
+                                if 'input_ids' in inputs and inputs['input_ids'].dtype != torch.long:
+                                    inputs['input_ids'] = inputs['input_ids'].long()
+                                inputs = inputs.to(self.device)
                                 
                                 outputs = self.model(**inputs, output_hidden_states=True)
                                 last_hidden = outputs.hidden_states[-1]
@@ -233,7 +237,11 @@ class LocalTransformersBackend(InferenceBackend):
                                 truncation=True,
                                 max_length=max_length,
                                 padding=True
-                            ).to(self.device)
+                            )
+                            # Ensure input_ids are long tensors (required for embedding layer)
+                            if 'input_ids' in inputs and inputs['input_ids'].dtype != torch.long:
+                                inputs['input_ids'] = inputs['input_ids'].long()
+                            inputs = inputs.to(self.device)
                             
                             outputs = self.model(**inputs, output_hidden_states=True)
                             last_hidden = outputs.hidden_states[-1]
@@ -264,7 +272,11 @@ class LocalTransformersBackend(InferenceBackend):
                             try:
                                 with torch.no_grad():
                                     inputs = self.tokenizer([text], return_tensors="pt",
-                                                          truncation=True, max_length=max_length).to(self.device)
+                                                          truncation=True, max_length=max_length)
+                                    # Ensure input_ids are long tensors (required for embedding layer)
+                                    if 'input_ids' in inputs and inputs['input_ids'].dtype != torch.long:
+                                        inputs['input_ids'] = inputs['input_ids'].long()
+                                    inputs = inputs.to(self.device)
                                     outputs = self.model(**inputs, output_hidden_states=True)
                                     last_hidden = outputs.hidden_states[-1]
                                     # Convert to float32 first to avoid BFloat16 issues
@@ -506,7 +518,11 @@ class LocalTransformersBackend(InferenceBackend):
             inputs = model_specific_kwargs.pop('granite_inputs')  # Remove from kwargs to avoid duplication
         else:
             # Standard tokenization for other models
-            inputs = self.tokenizer(generation_prompt, return_tensors="pt").to(self.device)
+            inputs = self.tokenizer(generation_prompt, return_tensors="pt")
+            # Ensure input_ids are long tensors (required for embedding layer)
+            if 'input_ids' in inputs and inputs['input_ids'].dtype != torch.long:
+                inputs['input_ids'] = inputs['input_ids'].long()
+            inputs = inputs.to(self.device)
         
         try:
             with torch.no_grad():
